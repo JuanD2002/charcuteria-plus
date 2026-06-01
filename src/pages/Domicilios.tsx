@@ -12,6 +12,7 @@ import { Truck, Plus, MapPin, Clock, CheckCircle2, Navigation } from "lucide-rea
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useCompany } from "@/hooks/useCompany";
 
 const STATUSES = [
   { value: "pendiente", label: "Pendiente" },
@@ -21,6 +22,7 @@ const STATUSES = [
 ];
 
 const Domicilios = () => {
+  const { activeCompanyId } = useCompany();
   const [orders, setOrders] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -33,12 +35,13 @@ const Domicilios = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => void load())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, []);
+  }, [activeCompanyId]);
 
   const load = async () => {
+    if (!activeCompanyId) { setOrders([]); setDrivers([]); return; }
     const [{ data: ords }, { data: emps }] = await Promise.all([
-      supabase.from("orders").select("*, employees(full_name)").order("created_at", { ascending: false }),
-      supabase.from("employees").select("*").eq("is_delivery", true).eq("is_active", true),
+      supabase.from("orders").select("*, employees(full_name)").eq("company_id", activeCompanyId).order("created_at", { ascending: false }),
+      supabase.from("employees").select("*").eq("company_id", activeCompanyId).eq("is_delivery", true).eq("is_active", true),
     ]);
     setOrders(ords ?? []);
     setDrivers(emps ?? []);
@@ -52,12 +55,14 @@ const Domicilios = () => {
       toast.error("Cliente y dirección son obligatorios");
       return;
     }
+    if (!activeCompanyId) return toast.error("Selecciona una empresa primero");
     const { error } = await supabase.from("orders").insert({
       customer_name: form.customer_name.trim(),
       customer_phone: form.customer_phone.trim() || null,
       address: form.address.trim(),
       total: Number(form.total) || 0,
       notes: form.notes.trim() || null,
+      company_id: activeCompanyId,
     });
     if (error) return toast.error(error.message);
     toast.success("Pedido creado");
