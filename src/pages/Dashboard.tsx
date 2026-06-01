@@ -77,11 +77,10 @@ const Dashboard = () => {
     });
     setSalesData(sales);
 
-    // Attendance fake-aggregated for the chart from real data
-    const { data: attRange } = await supabase
-      .from("attendance")
-      .select("check_in")
-      .gte("check_in", subDays(new Date(), 6).toISOString());
+    // Attendance for chart, scoped to current company employees
+    const { data: attRange } = empIds.size
+      ? await supabase.from("attendance").select("check_in, employee_id").in("employee_id", Array.from(empIds)).gte("check_in", subDays(new Date(), 6).toISOString())
+      : { data: [] as any[] };
     const att = days.map((d) => {
       const next = new Date(d.date.getTime() + 86400000).toISOString();
       const count = new Set(
