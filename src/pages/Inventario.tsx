@@ -14,6 +14,7 @@ import { Package, Plus, ArrowDownToLine, ArrowUpFromLine, AlertTriangle } from "
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { useCompany } from "@/hooks/useCompany";
 
 interface Product {
   id: string;
@@ -27,6 +28,7 @@ interface Product {
 }
 
 const Inventario = () => {
+  const { activeCompanyId } = useCompany();
   const [products, setProducts] = useState<Product[]>([]);
   const [movements, setMovements] = useState<any[]>([]);
   const [openProd, setOpenProd] = useState(false);
@@ -35,13 +37,15 @@ const Inventario = () => {
   const [prodForm, setProdForm] = useState({ name: "", category: "", unit: "kg", cost: "", price: "", stock: "0", min_stock: "0" });
   const [movForm, setMovForm] = useState({ product_id: "", quantity: "", unit_price: "", reason: "" });
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [activeCompanyId]);
 
   const load = async () => {
-    const [{ data: prods }, { data: movs }] = await Promise.all([
-      supabase.from("products").select("*").order("name"),
-      supabase.from("inventory_movements").select("*, products(name, unit)").order("created_at", { ascending: false }).limit(50),
-    ]);
+    if (!activeCompanyId) { setProducts([]); setMovements([]); return; }
+    const { data: prods } = await supabase.from("products").select("*").eq("company_id", activeCompanyId).order("name");
+    const ids = (prods ?? []).map((p: any) => p.id);
+    const { data: movs } = ids.length
+      ? await supabase.from("inventory_movements").select("*, products(name, unit)").in("product_id", ids).order("created_at", { ascending: false }).limit(50)
+      : { data: [] as any[] };
     setProducts(prods ?? []);
     setMovements(movs ?? []);
   };
@@ -54,6 +58,7 @@ const Inventario = () => {
       toast.error("Completa nombre y categoría");
       return;
     }
+    if (!activeCompanyId) return toast.error("Selecciona una empresa primero");
     const { error } = await supabase.from("products").insert({
       name: prodForm.name.trim(),
       category: prodForm.category.trim(),
@@ -62,6 +67,7 @@ const Inventario = () => {
       price: Number(prodForm.price) || 0,
       stock: Number(prodForm.stock) || 0,
       min_stock: Number(prodForm.min_stock) || 0,
+      company_id: activeCompanyId,
     });
     if (error) return toast.error(error.message);
     toast.success("Producto creado");

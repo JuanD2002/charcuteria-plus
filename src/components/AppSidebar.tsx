@@ -1,26 +1,18 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Package, Truck, LogOut, Beef } from "lucide-react";
+import { LayoutDashboard, Users, Package, Truck, LogOut, Beef, Shield } from "lucide-react";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarFooter,
-  SidebarHeader,
-  useSidebar,
+  Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, SidebarHeader, useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/useAuth";
+import { useCompany, AppModule } from "@/hooks/useCompany";
 import { Button } from "@/components/ui/button";
 
-const items = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Empleados", url: "/empleados", icon: Users },
-  { title: "Inventario", url: "/inventario", icon: Package },
-  { title: "Domicilios", url: "/domicilios", icon: Truck },
+const items: { title: string; url: string; icon: any; module: AppModule }[] = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
+  { title: "Empleados", url: "/empleados", icon: Users, module: "empleados" },
+  { title: "Inventario", url: "/inventario", icon: Package, module: "inventario" },
+  { title: "Domicilios", url: "/domicilios", icon: Truck, module: "domicilios" },
 ];
 
 export function AppSidebar() {
@@ -28,9 +20,12 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { user, signOut } = useAuth();
+  const { canView, isSuperAdmin } = useCompany();
 
   const isActive = (path: string) =>
     path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+
+  const visible = items.filter((i) => canView(i.module));
 
   return (
     <Sidebar collapsible="icon">
@@ -41,7 +36,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="flex flex-col leading-tight">
-              <span className="font-display text-base font-bold text-sidebar-foreground">Charcutería</span>
+              <span className="font-display text-base font-bold text-sidebar-foreground">Grupo Apolo</span>
               <span className="text-[11px] text-sidebar-foreground/60">Manager v1.0</span>
             </div>
           )}
@@ -53,7 +48,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Operación</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
+              {visible.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink to={item.url} end={item.url === "/"}>
@@ -63,9 +58,30 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {visible.length === 0 && !collapsed && (
+                <p className="px-3 py-2 text-xs text-sidebar-foreground/60">Sin módulos asignados aún.</p>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Administración</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive("/admin")}>
+                    <NavLink to="/admin">
+                      <Shield className="h-4 w-4" />
+                      <span>Usuarios y permisos</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border">

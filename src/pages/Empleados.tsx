@@ -14,6 +14,7 @@ import { Users, Plus, LogIn, LogOut, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format, differenceInMinutes } from "date-fns";
 import { es } from "date-fns/locale";
+import { useCompany } from "@/hooks/useCompany";
 
 interface Employee {
   id: string;
@@ -33,18 +34,21 @@ interface Attendance {
 }
 
 const Empleados = () => {
+  const { activeCompanyId, canEdit } = useCompany();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ full_name: "", document_number: "", position: "", hourly_rate: "", is_delivery: false });
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => { void load(); }, [activeCompanyId]);
 
   const load = async () => {
-    const [{ data: emps }, { data: att }] = await Promise.all([
-      supabase.from("employees").select("*").order("full_name"),
-      supabase.from("attendance").select("*").order("check_in", { ascending: false }).limit(100),
-    ]);
+    if (!activeCompanyId) { setEmployees([]); setAttendance([]); return; }
+    const { data: emps } = await supabase.from("employees").select("*").eq("company_id", activeCompanyId).order("full_name");
+    const ids = (emps ?? []).map((e: any) => e.id);
+    const { data: att } = ids.length
+      ? await supabase.from("attendance").select("*").in("employee_id", ids).order("check_in", { ascending: false }).limit(100)
+      : { data: [] as any[] };
     setEmployees(emps ?? []);
     setAttendance(att ?? []);
   };
@@ -83,12 +87,14 @@ const Empleados = () => {
       toast.error("Completa los campos obligatorios");
       return;
     }
+    if (!activeCompanyId) return toast.error("Selecciona una empresa primero");
     const { error } = await supabase.from("employees").insert({
       full_name: form.full_name.trim(),
       document_number: form.document_number.trim(),
       position: form.position.trim(),
       hourly_rate: Number(form.hourly_rate) || 0,
       is_delivery: form.is_delivery,
+      company_id: activeCompanyId,
     });
     if (error) return toast.error(error.message);
     toast.success("Empleado registrado");

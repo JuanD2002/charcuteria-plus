@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Empleados from "./pages/Empleados";
 import Inventario from "./pages/Inventario";
 import Domicilios from "./pages/Domicilios";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/empleados" element={<Empleados />} />
               <Route path="/inventario" element={<Inventario />} />
               <Route path="/domicilios" element={<Domicilios />} />
+              <Route path="/admin" element={<Admin />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

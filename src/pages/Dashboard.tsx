@@ -7,8 +7,10 @@ import { LayoutDashboard, Users, Package, Truck, AlertTriangle, DollarSign } fro
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
 import { format, subDays, startOfDay } from "date-fns";
 import { es } from "date-fns/locale";
+import { useCompany } from "@/hooks/useCompany";
 
 const Dashboard = () => {
+  const { activeCompanyId, activeCompany } = useCompany();
   const [stats, setStats] = useState({
     activeToday: 0,
     salesToday: 0,
@@ -22,20 +24,30 @@ const Dashboard = () => {
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [activeCompanyId]);
 
   const load = async () => {
+    if (!activeCompanyId) return;
     const todayStart = startOfDay(new Date()).toISOString();
 
-    const [{ data: attToday }, { count: ordersActive }, { data: products }, { data: orders }, { data: movements }] = await Promise.all([
-      supabase.from("attendance").select("employee_id").gte("check_in", todayStart),
-      supabase.from("orders").select("*", { count: "exact", head: true }).in("status", ["pendiente", "en_camino"]),
-      supabase.from("products").select("*"),
-      supabase.from("orders").select("*, employees(full_name)").order("created_at", { ascending: false }).limit(20),
-      supabase.from("inventory_movements").select("type, quantity, unit_price, created_at").gte("created_at", subDays(new Date(), 6).toISOString()),
+    const { data: products } = await supabase.from("products").select("*").eq("company_id", activeCompanyId);
+    const productIds = (products ?? []).map((p: any) => p.id);
+
+    const [{ data: emps }, { count: ordersActive }, { data: orders }, { data: movements }] = await Promise.all([
+      supabase.from("employees").select("id").eq("company_id", activeCompanyId),
+      supabase.from("orders").select("*", { count: "exact", head: true }).eq("company_id", activeCompanyId).in("status", ["pendiente", "en_camino"]),
+      supabase.from("orders").select("*, employees(full_name)").eq("company_id", activeCompanyId).order("created_at", { ascending: false }).limit(20),
+      productIds.length
+        ? supabase.from("inventory_movements").select("type, quantity, unit_price, created_at").in("product_id", productIds).gte("created_at", subDays(new Date(), 6).toISOString())
+        : Promise.resolve({ data: [] as any[] } as any),
     ]);
 
-    const uniqueEmps = new Set((attToday ?? []).map((r) => r.employee_id));
+    const empIds = new Set((emps ?? []).map((e: any) => e.id));
+    const { data: attToday } = empIds.size
+      ? await supabase.from("attendance").select("employee_id").in("employee_id", Array.from(empIds)).gte("check_in", todayStart)
+      : { data: [] as any[] };
+
+    const uniqueEmps = new Set((attToday ?? []).map((r: any) => r.employee_id));
     const lowStock = (products ?? []).filter((p: any) => Number(p.stock) <= Number(p.min_stock));
 
     const todaySales = (movements ?? [])
@@ -65,11 +77,10 @@ const Dashboard = () => {
     });
     setSalesData(sales);
 
-    // Attendance fake-aggregated for the chart from real data
-    const { data: attRange } = await supabase
-      .from("attendance")
-      .select("check_in")
-      .gte("check_in", subDays(new Date(), 6).toISOString());
+    // Attendance for chart, scoped to current company employees
+    const { data: attRange } = empIds.size
+      ? await supabase.from("attendance").select("check_in, employee_id").in("employee_id", Array.from(empIds)).gte("check_in", subDays(new Date(), 6).toISOString())
+      : { data: [] as any[] };
     const att = days.map((d) => {
       const next = new Date(d.date.getTime() + 86400000).toISOString();
       const count = new Set(
