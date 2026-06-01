@@ -48,8 +48,6 @@ const Dashboard = () => {
       : { data: [] as any[] };
 
     const uniqueEmps = new Set((attToday ?? []).map((r: any) => r.employee_id));
-
-    const uniqueEmps = new Set((attToday ?? []).map((r) => r.employee_id));
     const lowStock = (products ?? []).filter((p: any) => Number(p.stock) <= Number(p.min_stock));
 
     const todaySales = (movements ?? [])
