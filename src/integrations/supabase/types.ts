@@ -52,8 +52,39 @@ export type Database = {
           },
         ]
       }
+      companies: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       employees: {
         Row: {
+          company_id: string | null
           created_at: string
           document_number: string
           full_name: string
@@ -65,6 +96,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          company_id?: string | null
           created_at?: string
           document_number: string
           full_name: string
@@ -76,6 +108,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          company_id?: string | null
           created_at?: string
           document_number?: string
           full_name?: string
@@ -86,7 +119,15 @@ export type Database = {
           position?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "employees_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inventory_movements: {
         Row: {
@@ -171,6 +212,7 @@ export type Database = {
       orders: {
         Row: {
           address: string
+          company_id: string | null
           created_at: string
           customer_name: string
           customer_phone: string | null
@@ -185,6 +227,7 @@ export type Database = {
         }
         Insert: {
           address: string
+          company_id?: string | null
           created_at?: string
           customer_name: string
           customer_phone?: string | null
@@ -199,6 +242,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          company_id?: string | null
           created_at?: string
           customer_name?: string
           customer_phone?: string | null
@@ -213,6 +257,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_delivery_employee_id_fkey"
             columns: ["delivery_employee_id"]
             isOneToOne: false
@@ -224,6 +275,7 @@ export type Database = {
       products: {
         Row: {
           category: string
+          company_id: string | null
           cost: number
           created_at: string
           id: string
@@ -236,6 +288,7 @@ export type Database = {
         }
         Insert: {
           category: string
+          company_id?: string | null
           cost?: number
           created_at?: string
           id?: string
@@ -248,6 +301,7 @@ export type Database = {
         }
         Update: {
           category?: string
+          company_id?: string | null
           cost?: number
           created_at?: string
           id?: string
@@ -258,7 +312,15 @@ export type Database = {
           unit?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -287,6 +349,47 @@ export type Database = {
         }
         Relationships: []
       }
+      user_company_permissions: {
+        Row: {
+          can_edit: boolean
+          can_view: boolean
+          company_id: string
+          created_at: string
+          id: string
+          module: Database["public"]["Enums"]["app_module"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          can_edit?: boolean
+          can_view?: boolean
+          company_id: string
+          created_at?: string
+          id?: string
+          module: Database["public"]["Enums"]["app_module"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          can_edit?: boolean
+          can_view?: boolean
+          company_id?: string
+          created_at?: string
+          id?: string
+          module?: Database["public"]["Enums"]["app_module"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_company_permissions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -313,6 +416,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_company_module: {
+        Args: {
+          _company_id: string
+          _module: Database["public"]["Enums"]["app_module"]
+          _require_edit?: boolean
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -321,8 +433,11 @@ export type Database = {
         Returns: boolean
       }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      user_company_ids: { Args: { _user_id: string }; Returns: string[] }
     }
     Enums: {
+      app_module: "dashboard" | "empleados" | "inventario" | "domicilios"
       app_role: "admin" | "manager" | "viewer" | "super_admin"
       movement_type: "entrada" | "salida"
       order_status: "pendiente" | "en_camino" | "entregado" | "cancelado"
@@ -453,6 +568,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_module: ["dashboard", "empleados", "inventario", "domicilios"],
       app_role: ["admin", "manager", "viewer", "super_admin"],
       movement_type: ["entrada", "salida"],
       order_status: ["pendiente", "en_camino", "entregado", "cancelado"],
