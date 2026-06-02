@@ -56,6 +56,10 @@ const Auth = () => {
       toast.success("Bienvenido");
     }
     setLoading(false);
+    if (asSuperAdmin) {
+      window.location.href = "/";
+      return;
+    }
     navigate("/", { replace: true });
   };
 
@@ -89,7 +93,7 @@ const Auth = () => {
       }
       setLoading(false);
       toast.success("Cuenta creada como Super Admin");
-      navigate("/", { replace: true });
+      window.location.href = "/";
       return;
     }
     setLoading(false);
