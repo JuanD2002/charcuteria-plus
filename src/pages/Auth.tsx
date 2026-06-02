@@ -133,6 +133,12 @@ const Auth = () => {
                     <Label htmlFor="pass-in">Contraseña</Label>
                     <Input id="pass-in" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                   </div>
+                  <div className="flex items-center gap-2 rounded-md border border-dashed border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/20">
+                    <Checkbox id="sa-in" checked={asSuperAdmin} onCheckedChange={(v) => setAsSuperAdmin(!!v)} />
+                    <Label htmlFor="sa-in" className="text-xs font-normal cursor-pointer">
+                      Entrar como Super Admin (temporal)
+                    </Label>
+                  </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Entrar al dashboard
