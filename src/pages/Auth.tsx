@@ -160,6 +160,12 @@ const Auth = () => {
                     <Label htmlFor="pass-up">Contraseña</Label>
                     <Input id="pass-up" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required />
                   </div>
+                  <div className="flex items-center gap-2 rounded-md border border-dashed border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/20">
+                    <Checkbox id="sa-up" checked={asSuperAdmin} onCheckedChange={(v) => setAsSuperAdmin(!!v)} />
+                    <Label htmlFor="sa-up" className="text-xs font-normal cursor-pointer">
+                      Crear como Super Admin (temporal)
+                    </Label>
+                  </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Crear cuenta
