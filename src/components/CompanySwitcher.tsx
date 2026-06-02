@@ -1,23 +1,25 @@
+import { useNavigate } from "react-router-dom";
 import { useCompany } from "@/hooks/useCompany";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Building2 } from "lucide-react";
+import { Building2, ChevronLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export const CompanySwitcher = () => {
-  const { companies, activeCompanyId, setActiveCompanyId, loading } = useCompany();
-  if (loading || companies.length === 0) return null;
+  const { activeCompany, loading } = useCompany();
+  const navigate = useNavigate();
+  if (loading) return null;
   return (
-    <div className="flex items-center gap-2">
-      <Building2 className="h-4 w-4 text-muted-foreground" />
-      <Select value={activeCompanyId ?? undefined} onValueChange={setActiveCompanyId}>
-        <SelectTrigger className="h-8 w-[200px] text-sm">
-          <SelectValue placeholder="Selecciona empresa" />
-        </SelectTrigger>
-        <SelectContent>
-          {companies.map((c) => (
-            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => navigate("/")}
+      className="gap-2 -ml-1 hover:bg-muted"
+      title="Volver a selección de empresa"
+    >
+      <ChevronLeft className="h-4 w-4 text-muted-foreground" />
+      <Building2 className="h-4 w-4 text-primary" />
+      <span className="font-medium text-sm">
+        {activeCompany?.name ?? "Administración"}
+      </span>
+    </Button>
   );
 };
