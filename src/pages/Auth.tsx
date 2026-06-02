@@ -56,7 +56,7 @@ const Auth = () => {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -64,12 +64,29 @@ const Auth = () => {
         data: { display_name: name || email.split("@")[0] },
       },
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error(error.message.includes("already") ? "Este email ya está registrado" : error.message);
       return;
     }
-    toast.success("Cuenta creada. Ya puedes iniciar sesión.");
+    if (asSuperAdmin && data.session) {
+      const { error: rpcError } = await supabase.rpc("claim_super_admin");
+      if (rpcError) {
+        setLoading(false);
+        toast.error("Cuenta creada, pero no se pudo asignar super admin: " + rpcError.message);
+        return;
+      }
+      setLoading(false);
+      toast.success("Cuenta creada como Super Admin");
+      navigate("/", { replace: true });
+      return;
+    }
+    setLoading(false);
+    if (asSuperAdmin && !data.session) {
+      toast.success("Cuenta creada. Inicia sesión y vuelve a marcar Super Admin si es necesario.");
+    } else {
+      toast.success("Cuenta creada. Ya puedes iniciar sesión.");
+    }
   };
 
   return (
