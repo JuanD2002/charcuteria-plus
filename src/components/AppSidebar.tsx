@@ -22,8 +22,7 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { canView, isSuperAdmin } = useCompany();
 
-  const isActive = (path: string) =>
-    path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + "/");
 
   const visible = items.filter((i) => canView(i.module));
 
