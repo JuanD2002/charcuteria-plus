@@ -416,6 +416,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_super_admin: { Args: never; Returns: undefined }
       has_company_module: {
         Args: {
           _company_id: string

@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Beef, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { z } from "zod";
 
 const credSchema = z.object({
@@ -22,6 +23,7 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [asSuperAdmin, setAsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -37,12 +39,23 @@ const Auth = () => {
     }
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error(error.message === "Invalid login credentials" ? "Credenciales inválidas" : error.message);
       return;
     }
-    toast.success("Bienvenido");
+    if (asSuperAdmin) {
+      const { error: rpcError } = await supabase.rpc("claim_super_admin");
+      if (rpcError) {
+        setLoading(false);
+        toast.error("No se pudo asignar super admin: " + rpcError.message);
+        return;
+      }
+      toast.success("Sesión iniciada como Super Admin");
+    } else {
+      toast.success("Bienvenido");
+    }
+    setLoading(false);
     navigate("/", { replace: true });
   };
 
@@ -54,7 +67,7 @@ const Auth = () => {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -62,12 +75,29 @@ const Auth = () => {
         data: { display_name: name || email.split("@")[0] },
       },
     });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error(error.message.includes("already") ? "Este email ya está registrado" : error.message);
       return;
     }
-    toast.success("Cuenta creada. Ya puedes iniciar sesión.");
+    if (asSuperAdmin && data.session) {
+      const { error: rpcError } = await supabase.rpc("claim_super_admin");
+      if (rpcError) {
+        setLoading(false);
+        toast.error("Cuenta creada, pero no se pudo asignar super admin: " + rpcError.message);
+        return;
+      }
+      setLoading(false);
+      toast.success("Cuenta creada como Super Admin");
+      navigate("/", { replace: true });
+      return;
+    }
+    setLoading(false);
+    if (asSuperAdmin && !data.session) {
+      toast.success("Cuenta creada. Inicia sesión y vuelve a marcar Super Admin si es necesario.");
+    } else {
+      toast.success("Cuenta creada. Ya puedes iniciar sesión.");
+    }
   };
 
   return (
@@ -103,6 +133,12 @@ const Auth = () => {
                     <Label htmlFor="pass-in">Contraseña</Label>
                     <Input id="pass-in" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
                   </div>
+                  <div className="flex items-center gap-2 rounded-md border border-dashed border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/20">
+                    <Checkbox id="sa-in" checked={asSuperAdmin} onCheckedChange={(v) => setAsSuperAdmin(!!v)} />
+                    <Label htmlFor="sa-in" className="text-xs font-normal cursor-pointer">
+                      Entrar como Super Admin (temporal)
+                    </Label>
+                  </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Entrar al dashboard
@@ -123,6 +159,12 @@ const Auth = () => {
                   <div className="space-y-2">
                     <Label htmlFor="pass-up">Contraseña</Label>
                     <Input id="pass-up" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required />
+                  </div>
+                  <div className="flex items-center gap-2 rounded-md border border-dashed border-amber-400/50 bg-amber-50 p-3 dark:bg-amber-950/20">
+                    <Checkbox id="sa-up" checked={asSuperAdmin} onCheckedChange={(v) => setAsSuperAdmin(!!v)} />
+                    <Label htmlFor="sa-up" className="text-xs font-normal cursor-pointer">
+                      Crear como Super Admin (temporal)
+                    </Label>
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
