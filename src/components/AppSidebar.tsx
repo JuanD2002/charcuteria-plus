@@ -9,7 +9,7 @@ import { useCompany, AppModule } from "@/hooks/useCompany";
 import { Button } from "@/components/ui/button";
 
 const items: { title: string; url: string; icon: any; module: AppModule }[] = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, module: "dashboard" },
   { title: "Empleados", url: "/empleados", icon: Users, module: "empleados" },
   { title: "Inventario", url: "/inventario", icon: Package, module: "inventario" },
   { title: "Domicilios", url: "/domicilios", icon: Truck, module: "domicilios" },
