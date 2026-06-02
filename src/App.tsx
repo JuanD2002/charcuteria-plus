@@ -6,7 +6,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { AppLayout } from "@/components/AppLayout";
+import { CompanyProviderLayout } from "@/components/CompanyProviderLayout";
 import Auth from "./pages/Auth";
+import CompanySelector from "./pages/CompanySelector";
 import Dashboard from "./pages/Dashboard";
 import Empleados from "./pages/Empleados";
 import Inventario from "./pages/Inventario";
@@ -25,12 +27,15 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/empleados" element={<Empleados />} />
-              <Route path="/inventario" element={<Inventario />} />
-              <Route path="/domicilios" element={<Domicilios />} />
-              <Route path="/admin" element={<Admin />} />
+            <Route element={<ProtectedRoute><CompanyProviderLayout /></ProtectedRoute>}>
+              <Route path="/" element={<CompanySelector />} />
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/empleados" element={<Empleados />} />
+                <Route path="/inventario" element={<Inventario />} />
+                <Route path="/domicilios" element={<Domicilios />} />
+                <Route path="/admin" element={<Admin />} />
+              </Route>
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

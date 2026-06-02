@@ -9,7 +9,7 @@ import { useCompany, AppModule } from "@/hooks/useCompany";
 import { Button } from "@/components/ui/button";
 
 const items: { title: string; url: string; icon: any; module: AppModule }[] = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard, module: "dashboard" },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, module: "dashboard" },
   { title: "Empleados", url: "/empleados", icon: Users, module: "empleados" },
   { title: "Inventario", url: "/inventario", icon: Package, module: "inventario" },
   { title: "Domicilios", url: "/domicilios", icon: Truck, module: "domicilios" },
@@ -22,8 +22,7 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { canView, isSuperAdmin } = useCompany();
 
-  const isActive = (path: string) =>
-    path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + "/");
 
   const visible = items.filter((i) => canView(i.module));
 
@@ -51,7 +50,7 @@ export function AppSidebar() {
               {visible.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                    <NavLink to={item.url} end={item.url === "/"}>
+                    <NavLink to={item.url}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
                     </NavLink>
