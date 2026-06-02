@@ -56,6 +56,10 @@ const Auth = () => {
       toast.success("Bienvenido");
     }
     setLoading(false);
+    if (asSuperAdmin) {
+      window.location.href = "/";
+      return;
+    }
     navigate("/", { replace: true });
   };
 
