@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { Beef, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { z } from "zod";
 
 const credSchema = z.object({
