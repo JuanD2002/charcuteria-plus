@@ -39,12 +39,23 @@ const Auth = () => {
     }
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast.error(error.message === "Invalid login credentials" ? "Credenciales inválidas" : error.message);
       return;
     }
-    toast.success("Bienvenido");
+    if (asSuperAdmin) {
+      const { error: rpcError } = await supabase.rpc("claim_super_admin");
+      if (rpcError) {
+        setLoading(false);
+        toast.error("No se pudo asignar super admin: " + rpcError.message);
+        return;
+      }
+      toast.success("Sesión iniciada como Super Admin");
+    } else {
+      toast.success("Bienvenido");
+    }
+    setLoading(false);
     navigate("/", { replace: true });
   };
 
