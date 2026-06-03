@@ -438,7 +438,15 @@ export type Database = {
       user_company_ids: { Args: { _user_id: string }; Returns: string[] }
     }
     Enums: {
-      app_module: "dashboard" | "empleados" | "inventario" | "domicilios"
+      app_module:
+        | "dashboard"
+        | "empleados"
+        | "inventario"
+        | "domicilios"
+        | "sedes"
+        | "recetas"
+        | "alarmas"
+        | "manuales"
       app_role: "admin" | "manager" | "viewer" | "super_admin"
       movement_type: "entrada" | "salida"
       order_status: "pendiente" | "en_camino" | "entregado" | "cancelado"
@@ -569,7 +577,16 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_module: ["dashboard", "empleados", "inventario", "domicilios"],
+      app_module: [
+        "dashboard",
+        "empleados",
+        "inventario",
+        "domicilios",
+        "sedes",
+        "recetas",
+        "alarmas",
+        "manuales",
+      ],
       app_role: ["admin", "manager", "viewer", "super_admin"],
       movement_type: ["entrada", "salida"],
       order_status: ["pendiente", "en_camino", "entregado", "cancelado"],
