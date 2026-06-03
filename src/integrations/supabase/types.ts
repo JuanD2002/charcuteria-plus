@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      alarms: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_resolved: boolean
+          resolved_at: string | null
+          severity: string
+          title: string
+          trigger_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_resolved?: boolean
+          resolved_at?: string | null
+          severity?: string
+          title: string
+          trigger_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_resolved?: boolean
+          resolved_at?: string | null
+          severity?: string
+          title?: string
+          trigger_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "alarms_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance: {
         Row: {
           check_in: string
@@ -48,6 +98,50 @@ export type Database = {
             columns: ["employee_id"]
             isOneToOne: false
             referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branches: {
+        Row: {
+          address: string | null
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          manager_name: string | null
+          name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          manager_name?: string | null
+          name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          manager_name?: string | null
+          name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -163,6 +257,92 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manual_categories: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manual_categories_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      manuals: {
+        Row: {
+          category_id: string | null
+          company_id: string
+          created_at: string
+          description: string | null
+          file_path: string
+          file_size: number | null
+          id: string
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category_id?: string | null
+          company_id: string
+          created_at?: string
+          description?: string | null
+          file_path: string
+          file_size?: number | null
+          id?: string
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category_id?: string | null
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "manuals_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "manual_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "manuals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -328,6 +508,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          is_active: boolean
           updated_at: string
           user_id: string
         }
@@ -336,6 +517,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_active?: boolean
           updated_at?: string
           user_id: string
         }
@@ -344,10 +526,100 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_active?: boolean
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      recipe_ingredients: {
+        Row: {
+          created_at: string
+          id: string
+          ingredient_name: string
+          product_id: string | null
+          quantity: number
+          recipe_id: string
+          unit: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ingredient_name: string
+          product_id?: string | null
+          quantity?: number
+          recipe_id: string
+          unit?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ingredient_name?: string
+          product_id?: string | null
+          quantity?: number
+          recipe_id?: string
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          instructions: string | null
+          name: string
+          updated_at: string
+          yield_quantity: number
+          yield_unit: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          instructions?: string | null
+          name: string
+          updated_at?: string
+          yield_quantity?: number
+          yield_unit?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          instructions?: string | null
+          name?: string
+          updated_at?: string
+          yield_quantity?: number
+          yield_unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_company_permissions: {
         Row: {
@@ -433,6 +705,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_profile_active: { Args: { _user_id: string }; Returns: boolean }
       is_staff: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       user_company_ids: { Args: { _user_id: string }; Returns: string[] }
