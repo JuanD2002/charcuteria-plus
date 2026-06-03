@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface AuthContextType {
   user: User | null;
@@ -22,18 +23,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listener FIRST
+    const enforceActive = async (sess: Session | null) => {
+      if (!sess?.user) {
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      // Defer DB call to avoid recursion in onAuthStateChange
+      setTimeout(async () => {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("is_active")
+          .eq("user_id", sess.user.id)
+          .maybeSingle();
+        if (error || !data || data.is_active === false) {
+          toast.error("Tu cuenta está deshabilitada. Contacta al administrador.");
+          await supabase.auth.signOut();
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+        setSession(sess);
+        setUser(sess.user);
+        setLoading(false);
+      }, 0);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-      setLoading(false);
+      void enforceActive(newSession);
     });
 
-    // Then check existing session
     supabase.auth.getSession().then(({ data: { session: existing } }) => {
-      setSession(existing);
-      setUser(existing?.user ?? null);
-      setLoading(false);
+      void enforceActive(existing);
     });
 
     return () => subscription.unsubscribe();
@@ -41,6 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    window.location.href = "/auth";
   };
 
   return (

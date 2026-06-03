@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
-export type AppModule = "dashboard" | "empleados" | "inventario" | "domicilios";
+export type AppModule = "dashboard" | "empleados" | "inventario" | "domicilios" | "sedes" | "recetas" | "alarmas" | "manuales";
 
 export interface Company {
   id: string;
