@@ -13,6 +13,10 @@ import Dashboard from "./pages/Dashboard";
 import Empleados from "./pages/Empleados";
 import Inventario from "./pages/Inventario";
 import Domicilios from "./pages/Domicilios";
+import Sedes from "./pages/Sedes";
+import Recetas from "./pages/Recetas";
+import Alarmas from "./pages/Alarmas";
+import Manuales from "./pages/Manuales";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -31,9 +35,13 @@ const App = () => (
               <Route path="/" element={<CompanySelector />} />
               <Route element={<AppLayout />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/sedes" element={<Sedes />} />
                 <Route path="/empleados" element={<Empleados />} />
                 <Route path="/inventario" element={<Inventario />} />
+                <Route path="/recetas" element={<Recetas />} />
                 <Route path="/domicilios" element={<Domicilios />} />
+                <Route path="/alarmas" element={<Alarmas />} />
+                <Route path="/manuales" element={<Manuales />} />
                 <Route path="/admin" element={<Admin />} />
               </Route>
             </Route>
