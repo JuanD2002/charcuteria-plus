@@ -10,19 +10,24 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Shield, Building2, Save, Loader2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Shield, Building2, Save, Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useCompany, AppModule } from "@/hooks/useCompany";
 import { Navigate } from "react-router-dom";
 
 const MODULES: { value: AppModule; label: string }[] = [
   { value: "dashboard", label: "Dashboard" },
+  { value: "sedes", label: "Sedes" },
   { value: "empleados", label: "Empleados" },
   { value: "inventario", label: "Inventario" },
+  { value: "recetas", label: "Recetas" },
   { value: "domicilios", label: "Domicilios" },
+  { value: "alarmas", label: "Alarmas" },
+  { value: "manuales", label: "Manuales" },
 ];
 
-interface Profile { user_id: string; display_name: string | null; }
+interface Profile { user_id: string; display_name: string | null; is_active: boolean; }
 interface UserRole { user_id: string; role: string; }
 interface Perm { user_id: string; company_id: string; module: AppModule; can_view: boolean; can_edit: boolean; }
 
@@ -34,12 +39,15 @@ const Admin = () => {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [companyForm, setCompanyForm] = useState<Record<string, { name: string; description: string }>>({});
   const [saving, setSaving] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newUser, setNewUser] = useState({ email: "", password: "", display_name: "" });
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => { if (isSuperAdmin) void load(); }, [isSuperAdmin]);
 
   const load = async () => {
     const [{ data: pf }, { data: rl }, { data: pm }] = await Promise.all([
-      supabase.from("profiles").select("user_id, display_name").order("display_name"),
+      supabase.from("profiles").select("user_id, display_name, is_active").order("display_name"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("user_company_permissions").select("user_id, company_id, module, can_view, can_edit"),
     ]);
@@ -99,6 +107,13 @@ const Admin = () => {
     }
   };
 
+  const toggleActive = async (uid: string, value: boolean) => {
+    const { error } = await supabase.from("profiles").update({ is_active: value }).eq("user_id", uid);
+    if (error) return toast.error(error.message);
+    setProfiles((p) => p.map((x) => x.user_id === uid ? { ...x, is_active: value } : x));
+    toast.success(value ? "Usuario habilitado" : "Usuario deshabilitado");
+  };
+
   const saveCompany = async (id: string) => {
     setSaving(true);
     const f = companyForm[id];
@@ -107,6 +122,23 @@ const Admin = () => {
     if (error) return toast.error(error.message);
     toast.success("Empresa actualizada");
     await refreshCompany();
+  };
+
+  const createUser = async () => {
+    if (!newUser.email.trim() || !newUser.password) return toast.error("Email y contraseña obligatorios");
+    if (newUser.password.length < 6) return toast.error("Mínimo 6 caracteres en la contraseña");
+    setCreating(true);
+    const { data, error } = await supabase.functions.invoke("admin-create-user", {
+      body: { email: newUser.email.trim(), password: newUser.password, display_name: newUser.display_name || null },
+    });
+    setCreating(false);
+    if (error || (data as any)?.error) {
+      return toast.error((data as any)?.error ?? error?.message ?? "Error al crear usuario");
+    }
+    toast.success("Usuario creado y habilitado");
+    setCreateOpen(false);
+    setNewUser({ email: "", password: "", display_name: "" });
+    void load();
   };
 
   const selectedProfile = profiles.find((p) => p.user_id === selectedUser);
@@ -119,12 +151,60 @@ const Admin = () => {
         icon={<Shield className="h-5 w-5" />}
       />
 
-      <Tabs defaultValue="permissions">
+      <Tabs defaultValue="users">
         <TabsList>
+          <TabsTrigger value="users">Usuarios</TabsTrigger>
           <TabsTrigger value="permissions">Permisos por usuario</TabsTrigger>
           <TabsTrigger value="companies">Empresas</TabsTrigger>
-          <TabsTrigger value="users">Usuarios</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="users" className="space-y-3">
+          <div className="flex justify-end">
+            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+              <DialogTrigger asChild><Button><UserPlus className="h-4 w-4 mr-2" />Crear usuario</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Nuevo usuario</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div><Label>Nombre</Label><Input value={newUser.display_name} onChange={(e) => setNewUser({ ...newUser, display_name: e.target.value })} /></div>
+                  <div><Label>Email *</Label><Input type="email" value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} /></div>
+                  <div><Label>Contraseña *</Label><Input type="text" value={newUser.password} onChange={(e) => setNewUser({ ...newUser, password: e.target.value })} placeholder="Mínimo 6 caracteres" /></div>
+                  <p className="text-xs text-muted-foreground">El usuario se crea habilitado. Comparte la contraseña por un canal seguro y luego asigna sus permisos.</p>
+                </div>
+                <DialogFooter><Button onClick={createUser} disabled={creating}>{creating ? "Creando…" : "Crear"}</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          <Card><CardContent className="p-0 overflow-x-auto">
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Usuario</TableHead>
+                <TableHead>ID</TableHead>
+                <TableHead className="text-center">Habilitado</TableHead>
+                <TableHead className="text-right">Super administrador</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {profiles.map((p) => (
+                  <TableRow key={p.user_id}>
+                    <TableCell className="font-medium">
+                      {p.display_name ?? "Sin nombre"}
+                      {!p.is_active && <Badge variant="outline" className="ml-2 text-[10px]">deshabilitado</Badge>}
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground font-mono">{p.user_id.slice(0, 8)}…</TableCell>
+                    <TableCell className="text-center">
+                      <Switch checked={p.is_active} onCheckedChange={(v) => toggleActive(p.user_id, v)} />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Switch checked={userIsSuper(p.user_id)} onCheckedChange={(v) => toggleSuperAdmin(p.user_id, v)} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {profiles.length === 0 && (
+                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Sin usuarios</TableCell></TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent></Card>
+        </TabsContent>
 
         <TabsContent value="permissions" className="space-y-4">
           <div className="grid lg:grid-cols-[280px_1fr] gap-4">
@@ -221,32 +301,6 @@ const Admin = () => {
               </Card>
             );
           })}
-        </TabsContent>
-
-        <TabsContent value="users">
-          <Card><CardContent className="p-0 overflow-x-auto">
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Usuario</TableHead>
-                <TableHead>ID</TableHead>
-                <TableHead className="text-right">Super administrador</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {profiles.map((p) => (
-                  <TableRow key={p.user_id}>
-                    <TableCell className="font-medium">{p.display_name ?? "Sin nombre"}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground font-mono">{p.user_id.slice(0, 8)}…</TableCell>
-                    <TableCell className="text-right">
-                      <Switch checked={userIsSuper(p.user_id)} onCheckedChange={(v) => toggleSuperAdmin(p.user_id, v)} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent></Card>
-          <p className="text-xs text-muted-foreground mt-3">
-            Para crear nuevos usuarios, pídeles registrarse desde la pantalla de acceso. Una vez creados aparecerán aquí y podrás asignarles permisos.
-          </p>
         </TabsContent>
       </Tabs>
     </div>

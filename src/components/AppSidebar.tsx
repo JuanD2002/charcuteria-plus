@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, Users, Package, Truck, LogOut, Beef, Shield } from "lucide-react";
+import { LayoutDashboard, Users, Package, Truck, LogOut, Beef, Shield, MapPin, ChefHat, Bell, BookOpen } from "lucide-react";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
   SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarFooter, SidebarHeader, useSidebar,
@@ -10,9 +10,13 @@ import { Button } from "@/components/ui/button";
 
 const items: { title: string; url: string; icon: any; module: AppModule }[] = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, module: "dashboard" },
+  { title: "Sedes", url: "/sedes", icon: MapPin, module: "sedes" },
   { title: "Empleados", url: "/empleados", icon: Users, module: "empleados" },
   { title: "Inventario", url: "/inventario", icon: Package, module: "inventario" },
+  { title: "Recetas", url: "/recetas", icon: ChefHat, module: "recetas" },
   { title: "Domicilios", url: "/domicilios", icon: Truck, module: "domicilios" },
+  { title: "Alarmas", url: "/alarmas", icon: Bell, module: "alarmas" },
+  { title: "Manuales", url: "/manuales", icon: BookOpen, module: "manuales" },
 ];
 
 export function AppSidebar() {
