@@ -176,6 +176,71 @@ export type Database = {
         }
         Relationships: []
       }
+      company_google_integrations: {
+        Row: {
+          access_token: string | null
+          company_id: string
+          created_at: string
+          failover_enabled: boolean
+          google_email: string | null
+          id: string
+          last_synced_at: string | null
+          refresh_token: string | null
+          sheet_attendance: string | null
+          sheet_inventory: string | null
+          sheet_orders: string | null
+          sheet_sales: string | null
+          spreadsheet_id: string | null
+          sync_enabled: boolean
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          company_id: string
+          created_at?: string
+          failover_enabled?: boolean
+          google_email?: string | null
+          id?: string
+          last_synced_at?: string | null
+          refresh_token?: string | null
+          sheet_attendance?: string | null
+          sheet_inventory?: string | null
+          sheet_orders?: string | null
+          sheet_sales?: string | null
+          spreadsheet_id?: string | null
+          sync_enabled?: boolean
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          company_id?: string
+          created_at?: string
+          failover_enabled?: boolean
+          google_email?: string | null
+          id?: string
+          last_synced_at?: string | null
+          refresh_token?: string | null
+          sheet_attendance?: string | null
+          sheet_inventory?: string | null
+          sheet_orders?: string | null
+          sheet_sales?: string | null
+          spreadsheet_id?: string | null
+          sync_enabled?: boolean
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_google_integrations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees: {
         Row: {
           company_id: string | null
