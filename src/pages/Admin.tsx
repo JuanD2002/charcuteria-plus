@@ -355,23 +355,93 @@ const Admin = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="companies" className="space-y-3">
+        <TabsContent value="companies" className="space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={newCompanyOpen} onOpenChange={setNewCompanyOpen}>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Nueva empresa</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Crear empresa</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div><Label>Nombre *</Label><Input value={newCompany.name} onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })} /></div>
+                  <div>
+                    <Label>Slug (opcional)</Label>
+                    <Input value={newCompany.slug} onChange={(e) => setNewCompany({ ...newCompany, slug: e.target.value })} placeholder={slugify(newCompany.name) || "identificador-unico"} />
+                  </div>
+                  <div><Label>Descripción</Label><Input value={newCompany.description} onChange={(e) => setNewCompany({ ...newCompany, description: e.target.value })} /></div>
+                </div>
+                <DialogFooter><Button onClick={createCompany}>Crear</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
           {companies.map((c) => {
             const f = companyForm[c.id] ?? { name: c.name, description: c.description ?? "" };
+            const companyBranches = allBranches.filter((b) => b.company_id === c.id);
+            const nb = newBranch[c.id] ?? { name: "", address: "", phone: "", manager_name: "" };
             return (
               <Card key={c.id}>
-                <CardContent className="p-4 grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-end">
-                  <div>
-                    <Label>Nombre</Label>
-                    <Input value={f.name} onChange={(e) => setCompanyForm({ ...companyForm, [c.id]: { ...f, name: e.target.value } })} />
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      <span className="font-display text-lg font-semibold">{c.name}</span>
+                      {!c.is_active && <Badge variant="outline" className="text-[10px]">inactiva</Badge>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Activa</span>
+                        <Switch checked={c.is_active} onCheckedChange={(v) => toggleCompanyActive(c.id, v)} />
+                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => deleteCompany(c.id, c.name)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Descripción</Label>
-                    <Input value={f.description} onChange={(e) => setCompanyForm({ ...companyForm, [c.id]: { ...f, description: e.target.value } })} />
+
+                  <div className="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-end">
+                    <div>
+                      <Label>Nombre</Label>
+                      <Input value={f.name} onChange={(e) => setCompanyForm({ ...companyForm, [c.id]: { ...f, name: e.target.value } })} />
+                    </div>
+                    <div>
+                      <Label>Descripción</Label>
+                      <Input value={f.description} onChange={(e) => setCompanyForm({ ...companyForm, [c.id]: { ...f, description: e.target.value } })} />
+                    </div>
+                    <Button onClick={() => saveCompany(c.id)} disabled={saving}>
+                      <Save className="h-4 w-4 mr-2" />Guardar
+                    </Button>
                   </div>
-                  <Button onClick={() => saveCompany(c.id)} disabled={saving}>
-                    <Save className="h-4 w-4 mr-2" />Guardar
-                  </Button>
+
+                  <div className="rounded-lg border p-3 space-y-3 bg-muted/30">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <MapPin className="h-4 w-4 text-primary" /> Sedes ({companyBranches.length})
+                    </div>
+                    {companyBranches.length > 0 && (
+                      <Table>
+                        <TableHeader><TableRow>
+                          <TableHead>Sede</TableHead><TableHead>Dirección</TableHead>
+                          <TableHead>Responsable</TableHead><TableHead>Activa</TableHead><TableHead></TableHead>
+                        </TableRow></TableHeader>
+                        <TableBody>
+                          {companyBranches.map((b) => (
+                            <TableRow key={b.id}>
+                              <TableCell className="font-medium">{b.name}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{b.address || "—"}</TableCell>
+                              <TableCell className="text-xs">{b.manager_name || "—"}</TableCell>
+                              <TableCell><Switch checked={b.is_active} onCheckedChange={() => toggleBranchActive(b)} /></TableCell>
+                              <TableCell className="text-right">
+                                <Button size="icon" variant="ghost" onClick={() => deleteBranch(b.id)}><Trash2 className="h-4 w-4" /></Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    <div className="grid sm:grid-cols-5 gap-2 items-end">
+                      <div className="sm:col-span-1"><Label className="text-xs">Nueva sede</Label><Input placeholder="Nombre *" value={nb.name} onChange={(e) => setNewBranch({ ...newBranch, [c.id]: { ...nb, name: e.target.value } })} /></div>
+                      <div className="sm:col-span-2"><Label className="text-xs">Dirección</Label><Input value={nb.address} onChange={(e) => setNewBranch({ ...newBranch, [c.id]: { ...nb, address: e.target.value } })} /></div>
+                      <div className="sm:col-span-1"><Label className="text-xs">Responsable</Label><Input value={nb.manager_name} onChange={(e) => setNewBranch({ ...newBranch, [c.id]: { ...nb, manager_name: e.target.value } })} /></div>
+                      <Button onClick={() => addBranch(c.id)}><Plus className="h-4 w-4 mr-1" />Agregar</Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             );
