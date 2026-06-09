@@ -30,7 +30,7 @@ const pct = (curr: number, prev: number) => {
 };
 
 const Dashboard = () => {
-  const { activeCompanyId, activeCompany } = useCompany();
+  const { activeCompanyId, activeCompany, activeBranchId, activeBranch } = useCompany();
   const [range, setRange] = useState<RangeKey>("30");
   const [loading, setLoading] = useState(false);
 
@@ -40,6 +40,7 @@ const Dashboard = () => {
   const [lowStock, setLowStock] = useState<any[]>([]);
   const [ordersByStatus, setOrdersByStatus] = useState<{ status: string; count: number }[]>([]);
   const [ordersAvgTime, setOrdersAvgTime] = useState<number | null>(null);
+  const [alerts, setAlerts] = useState<any[]>([]);
 
   const [totals, setTotals] = useState({
     salesCurr: 0, salesPrev: 0,
@@ -48,7 +49,7 @@ const Dashboard = () => {
     lowStockCount: 0,
   });
 
-  useEffect(() => { if (activeCompanyId) void load(); }, [activeCompanyId, range]);
+  useEffect(() => { if (activeCompanyId) void load(); }, [activeCompanyId, activeBranchId, range]);
 
   const load = async () => {
     if (!activeCompanyId) return;
