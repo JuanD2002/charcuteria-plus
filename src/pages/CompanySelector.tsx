@@ -107,7 +107,7 @@ const CompanySelector = () => {
                 ))}
 
                 {isSuperAdmin && (
-                  <button onClick={() => { setActiveCompanyId(visibleCompanies[0]?.id ?? ""); navigate("/admin"); }} className="group text-left">
+                  <button onClick={() => navigate("/admin")} className="group text-left">
                     <Card className="h-full p-6 transition-all duration-300 hover:shadow-elegant hover:-translate-y-1 hover:border-primary/40 cursor-pointer border-dashed">
                       <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20 text-accent-foreground group-hover:bg-accent group-hover:text-accent-foreground transition-colors mb-4">
                         <Shield className="h-6 w-6" />
