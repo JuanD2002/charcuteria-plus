@@ -28,7 +28,7 @@ interface Product {
 }
 
 const Inventario = () => {
-  const { activeCompanyId } = useCompany();
+  const { activeCompanyId, activeBranchId } = useCompany();
   const [products, setProducts] = useState<Product[]>([]);
   const [movements, setMovements] = useState<any[]>([]);
   const [openProd, setOpenProd] = useState(false);
@@ -37,11 +37,13 @@ const Inventario = () => {
   const [prodForm, setProdForm] = useState({ name: "", category: "", unit: "kg", cost: "", price: "", stock: "0", min_stock: "0" });
   const [movForm, setMovForm] = useState({ product_id: "", quantity: "", unit_price: "", reason: "" });
 
-  useEffect(() => { void load(); }, [activeCompanyId]);
+  useEffect(() => { void load(); }, [activeCompanyId, activeBranchId]);
 
   const load = async () => {
     if (!activeCompanyId) { setProducts([]); setMovements([]); return; }
-    const { data: prods } = await supabase.from("products").select("*").eq("company_id", activeCompanyId).order("name");
+    let q = supabase.from("products").select("*").eq("company_id", activeCompanyId);
+    if (activeBranchId) q = q.eq("branch_id", activeBranchId);
+    const { data: prods } = await q.order("name");
     const ids = (prods ?? []).map((p: any) => p.id);
     const { data: movs } = ids.length
       ? await supabase.from("inventory_movements").select("*, products(name, unit)").in("product_id", ids).order("created_at", { ascending: false }).limit(50)
@@ -68,6 +70,7 @@ const Inventario = () => {
       stock: Number(prodForm.stock) || 0,
       min_stock: Number(prodForm.min_stock) || 0,
       company_id: activeCompanyId,
+      branch_id: activeBranchId,
     });
     if (error) return toast.error(error.message);
     toast.success("Producto creado");

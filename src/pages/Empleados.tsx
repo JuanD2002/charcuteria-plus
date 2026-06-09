@@ -34,17 +34,19 @@ interface Attendance {
 }
 
 const Empleados = () => {
-  const { activeCompanyId, canEdit } = useCompany();
+  const { activeCompanyId, activeBranchId } = useCompany();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ full_name: "", document_number: "", position: "", hourly_rate: "", is_delivery: false });
 
-  useEffect(() => { void load(); }, [activeCompanyId]);
+  useEffect(() => { void load(); }, [activeCompanyId, activeBranchId]);
 
   const load = async () => {
     if (!activeCompanyId) { setEmployees([]); setAttendance([]); return; }
-    const { data: emps } = await supabase.from("employees").select("*").eq("company_id", activeCompanyId).order("full_name");
+    let q = supabase.from("employees").select("*").eq("company_id", activeCompanyId);
+    if (activeBranchId) q = q.eq("branch_id", activeBranchId);
+    const { data: emps } = await q.order("full_name");
     const ids = (emps ?? []).map((e: any) => e.id);
     const { data: att } = ids.length
       ? await supabase.from("attendance").select("*").in("employee_id", ids).order("check_in", { ascending: false }).limit(100)
@@ -95,6 +97,7 @@ const Empleados = () => {
       hourly_rate: Number(form.hourly_rate) || 0,
       is_delivery: form.is_delivery,
       company_id: activeCompanyId,
+      branch_id: activeBranchId,
     });
     if (error) return toast.error(error.message);
     toast.success("Empleado registrado");
