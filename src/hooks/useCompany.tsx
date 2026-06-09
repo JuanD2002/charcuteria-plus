@@ -12,6 +12,14 @@ export interface Company {
   is_active: boolean;
 }
 
+export interface Branch {
+  id: string;
+  company_id: string;
+  name: string;
+  address: string | null;
+  is_active: boolean;
+}
+
 interface Permission {
   company_id: string;
   module: AppModule;
@@ -26,19 +34,27 @@ interface CompanyContextType {
   activeCompanyId: string | null;
   setActiveCompanyId: (id: string) => void;
   activeCompany: Company | null;
+  branches: Branch[];
+  activeBranchId: string | null;
+  setActiveBranchId: (id: string | null) => void;
+  activeBranch: Branch | null;
   permissions: Permission[];
   canView: (module: AppModule, companyId?: string | null) => boolean;
   canEdit: (module: AppModule, companyId?: string | null) => boolean;
   refresh: () => Promise<void>;
+  refreshBranches: () => Promise<void>;
 }
 
 const Ctx = createContext<CompanyContextType>({
   loading: true, isSuperAdmin: false, companies: [], activeCompanyId: null,
-  setActiveCompanyId: () => {}, activeCompany: null, permissions: [],
-  canView: () => false, canEdit: () => false, refresh: async () => {},
+  setActiveCompanyId: () => {}, activeCompany: null,
+  branches: [], activeBranchId: null, setActiveBranchId: () => {}, activeBranch: null,
+  permissions: [], canView: () => false, canEdit: () => false,
+  refresh: async () => {}, refreshBranches: async () => {},
 });
 
-const STORAGE_KEY = "apolo_active_company";
+const STORAGE_COMPANY = "apolo_active_company";
+const STORAGE_BRANCH = "apolo_active_branch";
 
 export const CompanyProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
@@ -47,10 +63,24 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [activeCompanyId, _setActiveCompanyId] = useState<string | null>(null);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [activeBranchId, _setActiveBranchId] = useState<string | null>(null);
 
   const setActiveCompanyId = (id: string) => {
     _setActiveCompanyId(id);
-    try { localStorage.setItem(STORAGE_KEY, id); } catch {}
+    _setActiveBranchId(null);
+    try {
+      localStorage.setItem(STORAGE_COMPANY, id);
+      localStorage.removeItem(STORAGE_BRANCH);
+    } catch {}
+  };
+
+  const setActiveBranchId = (id: string | null) => {
+    _setActiveBranchId(id);
+    try {
+      if (id) localStorage.setItem(STORAGE_BRANCH, id);
+      else localStorage.removeItem(STORAGE_BRANCH);
+    } catch {}
   };
 
   const refresh = useCallback(async () => {
@@ -69,14 +99,27 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
     setPermissions((perms ?? []) as Permission[]);
 
     const allowed = (comps ?? []) as Company[];
-    const saved = (() => { try { return localStorage.getItem(STORAGE_KEY); } catch { return null; } })();
-    const next = (saved && allowed.find((c) => c.id === saved)?.id) || allowed[0]?.id || null;
+    const saved = (() => { try { return localStorage.getItem(STORAGE_COMPANY); } catch { return null; } })();
+    const next = (saved && allowed.find((c) => c.id === saved)?.id) || null;
     _setActiveCompanyId(next);
 
     setLoading(false);
   }, [user]);
 
+  const refreshBranches = useCallback(async () => {
+    if (!activeCompanyId) { setBranches([]); return; }
+    const { data } = await supabase.from("branches").select("id, company_id, name, address, is_active").eq("company_id", activeCompanyId).order("name");
+    setBranches((data ?? []) as Branch[]);
+  }, [activeCompanyId]);
+
   useEffect(() => { void refresh(); }, [refresh]);
+
+  useEffect(() => {
+    void refreshBranches();
+    // restore saved branch (only if matches new company)
+    const savedB = (() => { try { return localStorage.getItem(STORAGE_BRANCH); } catch { return null; } })();
+    if (savedB) _setActiveBranchId(savedB);
+  }, [refreshBranches]);
 
   const canView = (module: AppModule, companyId?: string | null) => {
     if (isSuperAdmin) return true;
@@ -92,9 +135,14 @@ export const CompanyProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const activeCompany = companies.find((c) => c.id === activeCompanyId) ?? null;
+  const activeBranch = branches.find((b) => b.id === activeBranchId) ?? null;
 
   return (
-    <Ctx.Provider value={{ loading, isSuperAdmin, companies, activeCompanyId, setActiveCompanyId, activeCompany, permissions, canView, canEdit, refresh }}>
+    <Ctx.Provider value={{
+      loading, isSuperAdmin, companies, activeCompanyId, setActiveCompanyId, activeCompany,
+      branches, activeBranchId, setActiveBranchId, activeBranch,
+      permissions, canView, canEdit, refresh, refreshBranches,
+    }}>
       {children}
     </Ctx.Provider>
   );

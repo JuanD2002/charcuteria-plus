@@ -22,7 +22,7 @@ const STATUSES = [
 ];
 
 const Domicilios = () => {
-  const { activeCompanyId } = useCompany();
+  const { activeCompanyId, activeBranchId } = useCompany();
   const [orders, setOrders] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
@@ -35,13 +35,17 @@ const Domicilios = () => {
       .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, () => void load())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
-  }, [activeCompanyId]);
+  }, [activeCompanyId, activeBranchId]);
 
   const load = async () => {
     if (!activeCompanyId) { setOrders([]); setDrivers([]); return; }
+    let oq = supabase.from("orders").select("*, employees(full_name)").eq("company_id", activeCompanyId);
+    if (activeBranchId) oq = oq.eq("branch_id", activeBranchId);
+    let eq2 = supabase.from("employees").select("*").eq("company_id", activeCompanyId).eq("is_delivery", true).eq("is_active", true);
+    if (activeBranchId) eq2 = eq2.eq("branch_id", activeBranchId);
     const [{ data: ords }, { data: emps }] = await Promise.all([
-      supabase.from("orders").select("*, employees(full_name)").eq("company_id", activeCompanyId).order("created_at", { ascending: false }),
-      supabase.from("employees").select("*").eq("company_id", activeCompanyId).eq("is_delivery", true).eq("is_active", true),
+      oq.order("created_at", { ascending: false }),
+      eq2,
     ]);
     setOrders(ords ?? []);
     setDrivers(emps ?? []);
@@ -63,6 +67,7 @@ const Domicilios = () => {
       total: Number(form.total) || 0,
       notes: form.notes.trim() || null,
       company_id: activeCompanyId,
+      branch_id: activeBranchId,
     });
     if (error) return toast.error(error.message);
     toast.success("Pedido creado");

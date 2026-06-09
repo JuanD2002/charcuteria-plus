@@ -22,17 +22,19 @@ interface Recipe {
 }
 
 const Recetas = () => {
-  const { activeCompanyId, canEdit } = useCompany();
+  const { activeCompanyId, activeBranchId, canEdit } = useCompany();
   const [rows, setRows] = useState<Recipe[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", description: "", yield_quantity: "1", yield_unit: "porciones", instructions: "" });
   const editable = canEdit("recetas");
 
-  useEffect(() => { void load(); }, [activeCompanyId]);
+  useEffect(() => { void load(); }, [activeCompanyId, activeBranchId]);
 
   const load = async () => {
     if (!activeCompanyId) return setRows([]);
-    const { data } = await supabase.from("recipes").select("*").eq("company_id", activeCompanyId).order("name");
+    let q = supabase.from("recipes").select("*").eq("company_id", activeCompanyId);
+    if (activeBranchId) q = q.eq("branch_id", activeBranchId);
+    const { data } = await q.order("name");
     setRows((data ?? []) as Recipe[]);
   };
 
@@ -41,6 +43,7 @@ const Recetas = () => {
     if (!activeCompanyId) return;
     const { error } = await supabase.from("recipes").insert({
       company_id: activeCompanyId,
+      branch_id: activeBranchId,
       name: form.name.trim(),
       description: form.description || null,
       yield_quantity: Number(form.yield_quantity) || 1,

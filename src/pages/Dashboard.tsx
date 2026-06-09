@@ -4,7 +4,7 @@ import { PageHeader, StatCard } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Users, Package, Truck, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { LayoutDashboard, Users, Package, Truck, DollarSign, TrendingUp, TrendingDown, Bell, Send, Inbox, Home, MapPin } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid, PieChart, Pie, Cell, Legend,
@@ -30,7 +30,7 @@ const pct = (curr: number, prev: number) => {
 };
 
 const Dashboard = () => {
-  const { activeCompanyId, activeCompany } = useCompany();
+  const { activeCompanyId, activeCompany, activeBranchId, activeBranch } = useCompany();
   const [range, setRange] = useState<RangeKey>("30");
   const [loading, setLoading] = useState(false);
 
@@ -40,6 +40,7 @@ const Dashboard = () => {
   const [lowStock, setLowStock] = useState<any[]>([]);
   const [ordersByStatus, setOrdersByStatus] = useState<{ status: string; count: number }[]>([]);
   const [ordersAvgTime, setOrdersAvgTime] = useState<number | null>(null);
+  const [alerts, setAlerts] = useState<any[]>([]);
 
   const [totals, setTotals] = useState({
     salesCurr: 0, salesPrev: 0,
@@ -48,7 +49,7 @@ const Dashboard = () => {
     lowStockCount: 0,
   });
 
-  useEffect(() => { if (activeCompanyId) void load(); }, [activeCompanyId, range]);
+  useEffect(() => { if (activeCompanyId) void load(); }, [activeCompanyId, activeBranchId, range]);
 
   const load = async () => {
     if (!activeCompanyId) return;
@@ -60,22 +61,37 @@ const Dashboard = () => {
     const prevStart = startOfDay(subDays(now, days * 2 - 1));
     const prevEnd = startOfDay(subDays(now, days));
 
-    const { data: products } = await supabase.from("products").select("*").eq("company_id", activeCompanyId);
+    let prodQ = supabase.from("products").select("*").eq("company_id", activeCompanyId);
+    if (activeBranchId) prodQ = prodQ.eq("branch_id", activeBranchId);
+    const { data: products } = await prodQ;
     const productIds = (products ?? []).map((p: any) => p.id);
     const productById = new Map((products ?? []).map((p: any) => [p.id, p]));
 
-    const [{ data: movements }, { data: emps }, { data: orders }] = await Promise.all([
+    let empQ = supabase.from("employees").select("id").eq("company_id", activeCompanyId);
+    if (activeBranchId) empQ = empQ.eq("branch_id", activeBranchId);
+    let ordQ = supabase.from("orders").select("status, created_at, dispatched_at, delivered_at")
+      .eq("company_id", activeCompanyId)
+      .gte("created_at", prevStart.toISOString());
+    if (activeBranchId) ordQ = ordQ.eq("branch_id", activeBranchId);
+
+    const [{ data: movements }, { data: emps }, { data: orders }, { data: alarmsData }] = await Promise.all([
       productIds.length
         ? supabase.from("inventory_movements")
             .select("product_id, type, quantity, unit_price, created_at")
             .in("product_id", productIds)
             .gte("created_at", prevStart.toISOString())
         : Promise.resolve({ data: [] as any[] } as any),
-      supabase.from("employees").select("id").eq("company_id", activeCompanyId),
-      supabase.from("orders").select("status, created_at, dispatched_at, delivered_at")
-        .eq("company_id", activeCompanyId)
-        .gte("created_at", prevStart.toISOString()),
+      empQ,
+      ordQ,
+      supabase.from("alarms")
+        .select("id, title, severity, created_at, company_id, target_company_id, is_resolved, companies:company_id(name)")
+        .or(`company_id.eq.${activeCompanyId},target_company_id.eq.${activeCompanyId}`)
+        .eq("is_resolved", false)
+        .order("created_at", { ascending: false })
+        .limit(5),
     ]);
+
+    setAlerts(alarmsData ?? []);
 
     const empIds = (emps ?? []).map((e: any) => e.id);
     const { data: attendance } = empIds.length
@@ -191,7 +207,11 @@ const Dashboard = () => {
     <div>
       <PageHeader
         title="Dashboard"
-        description={activeCompany ? `Comparativo de ${activeCompany.name}` : "Visión general"}
+        description={
+          activeCompany
+            ? `${activeCompany.name}${activeBranch ? ` · ${activeBranch.name}` : " · Todas las sedes"}`
+            : "Visión general"
+        }
         icon={<LayoutDashboard className="h-5 w-5" />}
       />
 
@@ -208,6 +228,44 @@ const Dashboard = () => {
         ))}
         {loading && <span className="text-xs text-muted-foreground self-center ml-2">Cargando…</span>}
       </div>
+
+      {alerts.length > 0 && (
+        <Card className="mb-6 border-warning/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bell className="h-4 w-4 text-warning" /> Alertas activas
+              <Badge variant="outline" className="ml-1">{alerts.length}</Badge>
+            </CardTitle>
+            <CardDescription>Alarmas sin resolver recibidas o internas de la empresa</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {alerts.map((a) => {
+              const incoming = a.company_id !== activeCompanyId;
+              const internal = !a.target_company_id;
+              const sevBg = a.severity === "critical" ? "bg-destructive/10 border-destructive/30"
+                : a.severity === "warning" ? "bg-warning/10 border-warning/30"
+                : "bg-primary/5 border-primary/20";
+              return (
+                <div key={a.id} className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${sevBg}`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {incoming ? <Inbox className="h-4 w-4 text-info shrink-0" />
+                      : internal ? <Home className="h-4 w-4 text-muted-foreground shrink-0" />
+                      : <Send className="h-4 w-4 text-primary shrink-0" />}
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{a.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {incoming ? `de ${a.companies?.name ?? "otra empresa"}` : internal ? "interna" : "enviada"}
+                        {" · "}{format(new Date(a.created_at), "dd MMM HH:mm", { locale: es })}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="capitalize">{a.severity}</Badge>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card><CardContent className="p-4">

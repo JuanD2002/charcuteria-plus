@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { Shield, Building2, Save, Loader2, UserPlus, FileSpreadsheet } from "lucide-react";
+import { Shield, Building2, Save, Loader2, UserPlus, FileSpreadsheet, Plus, Trash2, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { useCompany, AppModule } from "@/hooks/useCompany";
 import { Navigate } from "react-router-dom";
@@ -31,6 +31,7 @@ const MODULES: { value: AppModule; label: string }[] = [
 interface Profile { user_id: string; display_name: string | null; is_active: boolean; }
 interface UserRole { user_id: string; role: string; }
 interface Perm { user_id: string; company_id: string; module: AppModule; can_view: boolean; can_edit: boolean; }
+interface AdminBranch { id: string; company_id: string; name: string; address: string | null; phone: string | null; manager_name: string | null; is_active: boolean; }
 
 const Admin = () => {
   const { isSuperAdmin, companies, refresh: refreshCompany, loading } = useCompany();
@@ -44,21 +45,93 @@ const Admin = () => {
   const [newUser, setNewUser] = useState({ email: "", password: "", display_name: "" });
   const [creating, setCreating] = useState(false);
 
+  // Empresas / sedes
+  const [newCompanyOpen, setNewCompanyOpen] = useState(false);
+  const [newCompany, setNewCompany] = useState({ name: "", slug: "", description: "" });
+  const [allBranches, setAllBranches] = useState<AdminBranch[]>([]);
+  const [newBranch, setNewBranch] = useState<Record<string, { name: string; address: string; phone: string; manager_name: string }>>({});
+
   useEffect(() => { if (isSuperAdmin) void load(); }, [isSuperAdmin]);
 
   const load = async () => {
-    const [{ data: pf }, { data: rl }, { data: pm }] = await Promise.all([
+    const [{ data: pf }, { data: rl }, { data: pm }, { data: br }] = await Promise.all([
       supabase.from("profiles").select("user_id, display_name, is_active").order("display_name"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("user_company_permissions").select("user_id, company_id, module, can_view, can_edit"),
+      supabase.from("branches").select("id, company_id, name, address, phone, manager_name, is_active").order("name"),
     ]);
     setProfiles((pf ?? []) as Profile[]);
     setRoles((rl ?? []) as UserRole[]);
     setPerms((pm ?? []) as Perm[]);
+    setAllBranches((br ?? []) as AdminBranch[]);
     if (!selectedUser && pf && pf.length) setSelectedUser(pf[0].user_id);
     const cf: Record<string, { name: string; description: string }> = {};
     companies.forEach((c) => { cf[c.id] = { name: c.name, description: c.description ?? "" }; });
     setCompanyForm(cf);
+  };
+
+  const slugify = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+  const createCompany = async () => {
+    if (!newCompany.name.trim()) return toast.error("Nombre obligatorio");
+    const slug = (newCompany.slug || slugify(newCompany.name)).trim();
+    const { error } = await supabase.from("companies").insert({
+      name: newCompany.name.trim(),
+      slug,
+      description: newCompany.description || null,
+      is_active: true,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Empresa creada");
+    setNewCompanyOpen(false);
+    setNewCompany({ name: "", slug: "", description: "" });
+    await refreshCompany();
+    void load();
+  };
+
+  const toggleCompanyActive = async (id: string, value: boolean) => {
+    const { error } = await supabase.from("companies").update({ is_active: value }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(value ? "Empresa activa" : "Empresa inactiva");
+    await refreshCompany();
+  };
+
+  const deleteCompany = async (id: string, name: string) => {
+    if (!confirm(`¿Eliminar la empresa "${name}" y todos sus datos asociados?`)) return;
+    const { error } = await supabase.from("companies").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Empresa eliminada");
+    await refreshCompany();
+    void load();
+  };
+
+  const addBranch = async (companyId: string) => {
+    const f = newBranch[companyId] ?? { name: "", address: "", phone: "", manager_name: "" };
+    if (!f.name.trim()) return toast.error("Nombre de sede obligatorio");
+    const { error } = await supabase.from("branches").insert({
+      company_id: companyId,
+      name: f.name.trim(),
+      address: f.address || null,
+      phone: f.phone || null,
+      manager_name: f.manager_name || null,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Sede creada");
+    setNewBranch({ ...newBranch, [companyId]: { name: "", address: "", phone: "", manager_name: "" } });
+    void load();
+  };
+
+  const toggleBranchActive = async (b: AdminBranch) => {
+    const { error } = await supabase.from("branches").update({ is_active: !b.is_active }).eq("id", b.id);
+    if (error) return toast.error(error.message);
+    void load();
+  };
+
+  const deleteBranch = async (id: string) => {
+    if (!confirm("¿Eliminar esta sede?")) return;
+    const { error } = await supabase.from("branches").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    void load();
   };
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin" /></div>;
@@ -282,23 +355,93 @@ const Admin = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="companies" className="space-y-3">
+        <TabsContent value="companies" className="space-y-4">
+          <div className="flex justify-end">
+            <Dialog open={newCompanyOpen} onOpenChange={setNewCompanyOpen}>
+              <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-2" />Nueva empresa</Button></DialogTrigger>
+              <DialogContent>
+                <DialogHeader><DialogTitle>Crear empresa</DialogTitle></DialogHeader>
+                <div className="space-y-3">
+                  <div><Label>Nombre *</Label><Input value={newCompany.name} onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })} /></div>
+                  <div>
+                    <Label>Slug (opcional)</Label>
+                    <Input value={newCompany.slug} onChange={(e) => setNewCompany({ ...newCompany, slug: e.target.value })} placeholder={slugify(newCompany.name) || "identificador-unico"} />
+                  </div>
+                  <div><Label>Descripción</Label><Input value={newCompany.description} onChange={(e) => setNewCompany({ ...newCompany, description: e.target.value })} /></div>
+                </div>
+                <DialogFooter><Button onClick={createCompany}>Crear</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
           {companies.map((c) => {
             const f = companyForm[c.id] ?? { name: c.name, description: c.description ?? "" };
+            const companyBranches = allBranches.filter((b) => b.company_id === c.id);
+            const nb = newBranch[c.id] ?? { name: "", address: "", phone: "", manager_name: "" };
             return (
               <Card key={c.id}>
-                <CardContent className="p-4 grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-end">
-                  <div>
-                    <Label>Nombre</Label>
-                    <Input value={f.name} onChange={(e) => setCompanyForm({ ...companyForm, [c.id]: { ...f, name: e.target.value } })} />
+                <CardContent className="p-4 space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-primary" />
+                      <span className="font-display text-lg font-semibold">{c.name}</span>
+                      {!c.is_active && <Badge variant="outline" className="text-[10px]">inactiva</Badge>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">Activa</span>
+                        <Switch checked={c.is_active} onCheckedChange={(v) => toggleCompanyActive(c.id, v)} />
+                      </div>
+                      <Button size="icon" variant="ghost" onClick={() => deleteCompany(c.id, c.name)}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
                   </div>
-                  <div>
-                    <Label>Descripción</Label>
-                    <Input value={f.description} onChange={(e) => setCompanyForm({ ...companyForm, [c.id]: { ...f, description: e.target.value } })} />
+
+                  <div className="grid sm:grid-cols-[1fr_2fr_auto] gap-3 items-end">
+                    <div>
+                      <Label>Nombre</Label>
+                      <Input value={f.name} onChange={(e) => setCompanyForm({ ...companyForm, [c.id]: { ...f, name: e.target.value } })} />
+                    </div>
+                    <div>
+                      <Label>Descripción</Label>
+                      <Input value={f.description} onChange={(e) => setCompanyForm({ ...companyForm, [c.id]: { ...f, description: e.target.value } })} />
+                    </div>
+                    <Button onClick={() => saveCompany(c.id)} disabled={saving}>
+                      <Save className="h-4 w-4 mr-2" />Guardar
+                    </Button>
                   </div>
-                  <Button onClick={() => saveCompany(c.id)} disabled={saving}>
-                    <Save className="h-4 w-4 mr-2" />Guardar
-                  </Button>
+
+                  <div className="rounded-lg border p-3 space-y-3 bg-muted/30">
+                    <div className="flex items-center gap-2 text-sm font-medium">
+                      <MapPin className="h-4 w-4 text-primary" /> Sedes ({companyBranches.length})
+                    </div>
+                    {companyBranches.length > 0 && (
+                      <Table>
+                        <TableHeader><TableRow>
+                          <TableHead>Sede</TableHead><TableHead>Dirección</TableHead>
+                          <TableHead>Responsable</TableHead><TableHead>Activa</TableHead><TableHead></TableHead>
+                        </TableRow></TableHeader>
+                        <TableBody>
+                          {companyBranches.map((b) => (
+                            <TableRow key={b.id}>
+                              <TableCell className="font-medium">{b.name}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{b.address || "—"}</TableCell>
+                              <TableCell className="text-xs">{b.manager_name || "—"}</TableCell>
+                              <TableCell><Switch checked={b.is_active} onCheckedChange={() => toggleBranchActive(b)} /></TableCell>
+                              <TableCell className="text-right">
+                                <Button size="icon" variant="ghost" onClick={() => deleteBranch(b.id)}><Trash2 className="h-4 w-4" /></Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                    <div className="grid sm:grid-cols-5 gap-2 items-end">
+                      <div className="sm:col-span-1"><Label className="text-xs">Nueva sede</Label><Input placeholder="Nombre *" value={nb.name} onChange={(e) => setNewBranch({ ...newBranch, [c.id]: { ...nb, name: e.target.value } })} /></div>
+                      <div className="sm:col-span-2"><Label className="text-xs">Dirección</Label><Input value={nb.address} onChange={(e) => setNewBranch({ ...newBranch, [c.id]: { ...nb, address: e.target.value } })} /></div>
+                      <div className="sm:col-span-1"><Label className="text-xs">Responsable</Label><Input value={nb.manager_name} onChange={(e) => setNewBranch({ ...newBranch, [c.id]: { ...nb, manager_name: e.target.value } })} /></div>
+                      <Button onClick={() => addBranch(c.id)}><Plus className="h-4 w-4 mr-1" />Agregar</Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             );
