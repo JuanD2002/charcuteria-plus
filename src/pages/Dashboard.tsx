@@ -4,7 +4,7 @@ import { PageHeader, StatCard } from "@/components/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LayoutDashboard, Users, Package, Truck, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { LayoutDashboard, Users, Package, Truck, DollarSign, TrendingUp, TrendingDown, Bell, Send, Inbox, Home, MapPin } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   LineChart, Line, CartesianGrid, PieChart, Pie, Cell, Legend,
