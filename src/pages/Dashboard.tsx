@@ -207,7 +207,11 @@ const Dashboard = () => {
     <div>
       <PageHeader
         title="Dashboard"
-        description={activeCompany ? `Comparativo de ${activeCompany.name}` : "Visión general"}
+        description={
+          activeCompany
+            ? `${activeCompany.name}${activeBranch ? ` · ${activeBranch.name}` : " · Todas las sedes"}`
+            : "Visión general"
+        }
         icon={<LayoutDashboard className="h-5 w-5" />}
       />
 
@@ -224,6 +228,44 @@ const Dashboard = () => {
         ))}
         {loading && <span className="text-xs text-muted-foreground self-center ml-2">Cargando…</span>}
       </div>
+
+      {alerts.length > 0 && (
+        <Card className="mb-6 border-warning/40">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bell className="h-4 w-4 text-warning" /> Alertas activas
+              <Badge variant="outline" className="ml-1">{alerts.length}</Badge>
+            </CardTitle>
+            <CardDescription>Alarmas sin resolver recibidas o internas de la empresa</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {alerts.map((a) => {
+              const incoming = a.company_id !== activeCompanyId;
+              const internal = !a.target_company_id;
+              const sevBg = a.severity === "critical" ? "bg-destructive/10 border-destructive/30"
+                : a.severity === "warning" ? "bg-warning/10 border-warning/30"
+                : "bg-primary/5 border-primary/20";
+              return (
+                <div key={a.id} className={`flex items-center justify-between gap-3 rounded-lg border p-3 ${sevBg}`}>
+                  <div className="flex items-center gap-2 min-w-0">
+                    {incoming ? <Inbox className="h-4 w-4 text-info shrink-0" />
+                      : internal ? <Home className="h-4 w-4 text-muted-foreground shrink-0" />
+                      : <Send className="h-4 w-4 text-primary shrink-0" />}
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{a.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {incoming ? `de ${a.companies?.name ?? "otra empresa"}` : internal ? "interna" : "enviada"}
+                        {" · "}{format(new Date(a.created_at), "dd MMM HH:mm", { locale: es })}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="capitalize">{a.severity}</Badge>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card><CardContent className="p-4">
