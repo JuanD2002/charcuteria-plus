@@ -31,6 +31,7 @@ const MODULES: { value: AppModule; label: string }[] = [
 interface Profile { user_id: string; display_name: string | null; is_active: boolean; }
 interface UserRole { user_id: string; role: string; }
 interface Perm { user_id: string; company_id: string; module: AppModule; can_view: boolean; can_edit: boolean; }
+interface AdminBranch { id: string; company_id: string; name: string; address: string | null; phone: string | null; manager_name: string | null; is_active: boolean; }
 
 const Admin = () => {
   const { isSuperAdmin, companies, refresh: refreshCompany, loading } = useCompany();
@@ -44,21 +45,93 @@ const Admin = () => {
   const [newUser, setNewUser] = useState({ email: "", password: "", display_name: "" });
   const [creating, setCreating] = useState(false);
 
+  // Empresas / sedes
+  const [newCompanyOpen, setNewCompanyOpen] = useState(false);
+  const [newCompany, setNewCompany] = useState({ name: "", slug: "", description: "" });
+  const [allBranches, setAllBranches] = useState<AdminBranch[]>([]);
+  const [newBranch, setNewBranch] = useState<Record<string, { name: string; address: string; phone: string; manager_name: string }>>({});
+
   useEffect(() => { if (isSuperAdmin) void load(); }, [isSuperAdmin]);
 
   const load = async () => {
-    const [{ data: pf }, { data: rl }, { data: pm }] = await Promise.all([
+    const [{ data: pf }, { data: rl }, { data: pm }, { data: br }] = await Promise.all([
       supabase.from("profiles").select("user_id, display_name, is_active").order("display_name"),
       supabase.from("user_roles").select("user_id, role"),
       supabase.from("user_company_permissions").select("user_id, company_id, module, can_view, can_edit"),
+      supabase.from("branches").select("id, company_id, name, address, phone, manager_name, is_active").order("name"),
     ]);
     setProfiles((pf ?? []) as Profile[]);
     setRoles((rl ?? []) as UserRole[]);
     setPerms((pm ?? []) as Perm[]);
+    setAllBranches((br ?? []) as AdminBranch[]);
     if (!selectedUser && pf && pf.length) setSelectedUser(pf[0].user_id);
     const cf: Record<string, { name: string; description: string }> = {};
     companies.forEach((c) => { cf[c.id] = { name: c.name, description: c.description ?? "" }; });
     setCompanyForm(cf);
+  };
+
+  const slugify = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+  const createCompany = async () => {
+    if (!newCompany.name.trim()) return toast.error("Nombre obligatorio");
+    const slug = (newCompany.slug || slugify(newCompany.name)).trim();
+    const { error } = await supabase.from("companies").insert({
+      name: newCompany.name.trim(),
+      slug,
+      description: newCompany.description || null,
+      is_active: true,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Empresa creada");
+    setNewCompanyOpen(false);
+    setNewCompany({ name: "", slug: "", description: "" });
+    await refreshCompany();
+    void load();
+  };
+
+  const toggleCompanyActive = async (id: string, value: boolean) => {
+    const { error } = await supabase.from("companies").update({ is_active: value }).eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success(value ? "Empresa activa" : "Empresa inactiva");
+    await refreshCompany();
+  };
+
+  const deleteCompany = async (id: string, name: string) => {
+    if (!confirm(`¿Eliminar la empresa "${name}" y todos sus datos asociados?`)) return;
+    const { error } = await supabase.from("companies").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Empresa eliminada");
+    await refreshCompany();
+    void load();
+  };
+
+  const addBranch = async (companyId: string) => {
+    const f = newBranch[companyId] ?? { name: "", address: "", phone: "", manager_name: "" };
+    if (!f.name.trim()) return toast.error("Nombre de sede obligatorio");
+    const { error } = await supabase.from("branches").insert({
+      company_id: companyId,
+      name: f.name.trim(),
+      address: f.address || null,
+      phone: f.phone || null,
+      manager_name: f.manager_name || null,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Sede creada");
+    setNewBranch({ ...newBranch, [companyId]: { name: "", address: "", phone: "", manager_name: "" } });
+    void load();
+  };
+
+  const toggleBranchActive = async (b: AdminBranch) => {
+    const { error } = await supabase.from("branches").update({ is_active: !b.is_active }).eq("id", b.id);
+    if (error) return toast.error(error.message);
+    void load();
+  };
+
+  const deleteBranch = async (id: string) => {
+    if (!confirm("¿Eliminar esta sede?")) return;
+    const { error } = await supabase.from("branches").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    void load();
   };
 
   if (loading) return <div className="flex justify-center p-12"><Loader2 className="h-6 w-6 animate-spin" /></div>;
