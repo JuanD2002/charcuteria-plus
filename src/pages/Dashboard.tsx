@@ -61,22 +61,37 @@ const Dashboard = () => {
     const prevStart = startOfDay(subDays(now, days * 2 - 1));
     const prevEnd = startOfDay(subDays(now, days));
 
-    const { data: products } = await supabase.from("products").select("*").eq("company_id", activeCompanyId);
+    let prodQ = supabase.from("products").select("*").eq("company_id", activeCompanyId);
+    if (activeBranchId) prodQ = prodQ.eq("branch_id", activeBranchId);
+    const { data: products } = await prodQ;
     const productIds = (products ?? []).map((p: any) => p.id);
     const productById = new Map((products ?? []).map((p: any) => [p.id, p]));
 
-    const [{ data: movements }, { data: emps }, { data: orders }] = await Promise.all([
+    let empQ = supabase.from("employees").select("id").eq("company_id", activeCompanyId);
+    if (activeBranchId) empQ = empQ.eq("branch_id", activeBranchId);
+    let ordQ = supabase.from("orders").select("status, created_at, dispatched_at, delivered_at")
+      .eq("company_id", activeCompanyId)
+      .gte("created_at", prevStart.toISOString());
+    if (activeBranchId) ordQ = ordQ.eq("branch_id", activeBranchId);
+
+    const [{ data: movements }, { data: emps }, { data: orders }, { data: alarmsData }] = await Promise.all([
       productIds.length
         ? supabase.from("inventory_movements")
             .select("product_id, type, quantity, unit_price, created_at")
             .in("product_id", productIds)
             .gte("created_at", prevStart.toISOString())
         : Promise.resolve({ data: [] as any[] } as any),
-      supabase.from("employees").select("id").eq("company_id", activeCompanyId),
-      supabase.from("orders").select("status, created_at, dispatched_at, delivered_at")
-        .eq("company_id", activeCompanyId)
-        .gte("created_at", prevStart.toISOString()),
+      empQ,
+      ordQ,
+      supabase.from("alarms")
+        .select("id, title, severity, created_at, company_id, target_company_id, is_resolved, companies:company_id(name)")
+        .or(`company_id.eq.${activeCompanyId},target_company_id.eq.${activeCompanyId}`)
+        .eq("is_resolved", false)
+        .order("created_at", { ascending: false })
+        .limit(5),
     ]);
+
+    setAlerts(alarmsData ?? []);
 
     const empIds = (emps ?? []).map((e: any) => e.id);
     const { data: attendance } = empIds.length
